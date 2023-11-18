@@ -1,0 +1,172 @@
+PARSER_BEGIN(Gramatica)
+import java.lang.Math;
+class Gramatica
+{
+  public static void main (String[] args) throws ParseException
+  {
+   try
+   {
+    Gramatica analisador = new Gramatica (System.in);
+    analisador.Programa();
+    System.out.println("Compilado....");
+   }
+    catch (ParseException e)
+    {
+     System.out.println(e.getMessage());//Erro encontrado
+    }
+   }
+}
+PARSER_END(Gramatica)
+//Aqui o alfabeto com expressões regulares básicas
+TOKEN:
+{
+<A: "(" >
+  {
+  System.out.println("Abre Parenteses: "+image);
+  }
+|
+<F: ")" >
+  {
+   System.out.println("Fecha Parenteses: "+image);
+   }
+|
+<AD: "+"  |"-" >
+  {
+  System.out.println("Operador/Sinal: "+image);
+   }
+  |
+ <MUL: "*" | "/" >
+  {
+  System.out.println("Operador: "+image);
+   }
+  |
+  <P: "^" >
+  {
+  System.out.println("Operador/Sinal: "+image);
+   }
+  |
+  <R: "#" >
+  {
+  System.out.println("Operador/Sinal: "+image);
+   }
+  |
+  <DEC: <NUM> (["."] <NUM>)*>
+  {
+  System.out.println("Operador/Sinal: "+image);
+   }
+  |
+<NUM: (["0"-"9"])+ >
+  {
+  System.out.println("Digito: "+image);
+   }
+}
+
+SKIP:
+{
+" "|"\r\n"|"\t"
+}
+
+//Aqui as regras de produção
+void Programa(): { double a; } 
+{
+a= exp()<EOF>
+  {
+  System.out.println("Resultado= "+a);
+  }
+}
+
+double exp():{ double a,b=0.00; Token t=null; }
+{
+a=termo() ( t=<AD> b=termo() 
+  {
+  if (t.image.equals("-"))
+    a=a-b;
+  else
+   a=a+b;
+   }
+    )*
+{ return a;  }
+}
+
+double termo(): { double a, b=1.00; Token t=null; }
+{
+a= potencia() ( t=<MUL> b=potencia()
+   {
+   if (t.image.equals("*"))
+     a=a*b;
+   else
+    a=a/b;
+  }
+   )*
+{return a;}
+}
+
+double potencia(): { Token numero=null; double a, b=1.00; Token t=null; Token sinal;}
+{
+a= fator() ( t=<P> b=fator(){a=Math.pow(a,b);})*
+{return a;}
+
+|
+
+sinal=<R>numero=<DEC>
+{ a= Double.parseDouble (numero.image); return Math.sqrt(a);}
+{return a;}
+
+}
+
+double fator(): {double e; Token numero=null;  Token sinal;}
+{
+ <A>e=exp()<F>
+ {  return  e;  }
+ |
+ numero=<DEC>
+ {
+  e = Double.parseDouble (numero.image);   
+  return e;
+ }
+|
+ sinal=<AD>numero=<DEC>
+ {
+ if (sinal.image.equals("-"))
+  e= -1.0*Double.parseDouble (numero.image);   
+ else
+  e= Double.parseDouble (numero.image);
+ return e;
+ }
+
+}
+
+/*double dot(): { Token numero=null; double a, b=1.00; Token t=null; Token sinal;}
+{
+a= fator() ( t=<D> b=fator(){a=a+(b/10);})*
+{return a;}
+
+}*/
+
+/*double fator(): {double e; Token numero=null;  Token sinal;}
+{
+ <A>e=exp()<F>
+ {  return  e;  }
+ |
+ numero=<DEC>
+ {
+  System.out.println(numero.image);
+  e = Double.parseDouble (numero.image);   
+  return e;
+ }
+|
+ sinal=<AD><DEC>
+ {
+ if (sinal.image.equals("-"))
+  e= -1.0*Double.parseDouble (numero.image);   
+ else
+  e= Double.parseDouble (numero.image);
+ return e;
+ }*/
+
+
+
+
+
+
+

@@ -1,0 +1,6 @@
+a := XIX + IX; 
+x := XXXVIII;
+
+soma := a + x;
+
+exibe soma;

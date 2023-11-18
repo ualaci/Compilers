@@ -1,0 +1,452 @@
+options
+{
+static = false;
+}
+PARSER_BEGIN(Gramatica)
+import java.io.*;
+class Gramatica
+{
+Tabelas Tabela = new Tabelas (); // Para o gerenciamento de variáveis
+public static void main (String[] args) throws ParseException
+{
+try
+{
+Gramatica analisador = new Gramatica (System.in);
+analisador.Programa();
+System.out.println("Compilado....");
+}
+catch(TokenMgrError e) {
+System.err.println("Lexical Error:\n" + e.getMessage());
+}
+catch(ParseException e) {
+System.err.println("Syntactic Error:\n" + e.getMessage());
+}
+catch(Exception e) {
+System.err.println("Semantic error:\n" + e.getMessage() );
+e.printStackTrace();
+}
+}
+}
+PARSER_END(Gramatica)
+
+TOKEN: /* Elementos relacionais e booleanos */
+{
+<RELACIONAIS: ">" | "<" | "<=" | ">=" | "==" | "!=" >
+
+{
+//System.out.println("Relacional: "+image);
+}
+|
+<BOOL_A: "||" | "|" | "Xor" | "~" >
+{
+// System.out.println("Booleano: "+image);
+}
+|
+<BOOL_B: "&&" | "&" >
+{
+// System.out.println("Booleano: "+image);
+}
+|
+<SENTENCA_BOOLEANA: "true" | "false" >
+{
+// System.out.println("Sentenca: "+image);
+}
+}
+TOKEN: /* Condicionais como if-else entre outros */
+{
+<IF: "if" >
+{
+// System.out.println("Condicional: "+image);
+}
+|
+<THEN: "then" >
+{
+// System.out.println("Condicional: "+image);
+}
+|
+<ELSE: "else" >
+{
+// System.out.println("Condicional: "+image);
+}
+
+}
+TOKEN: /* Comandos iterativos, ou seja, os laços de repetição como while, do
+while e repeat */
+{
+<WHILE: "while" >
+{
+//System.out.println("Iterativo: "+image);
+}
+|
+<DO: "do" >
+{
+// System.out.println("Iterativo: "+image);
+}
+|
+<REPEAT: "repeat" >
+{
+// System.out.println("Iterativo: "+image);
+}
+|
+<UNTIL: "until" >
+{
+// System.out.println("Iterativo: "+image);
+}
+|
+<FOR: "for">
+{
+//System.out.println("Iterativo: "+image);
+}
+|
+<INCREMENTADOR: "++">
+{
+// System.out.println("Iterativo: "+image);
+}
+|
+<DECREMENTADOR: "--">
+{
+//System.out.println("Iterativo: "+image);
+
+}
+}
+
+TOKEN: /* Elementos gerais como tipos de variáveis, identificadores, números
+e entre outros. */
+{
+<INICIO: "$BEGIN_PROGRAM">
+{
+System.out.println("Diretiva: "+image);
+}
+|
+<FIM: "$END_PROGRAM">
+{
+System.out.println("Diretiva: "+image);
+}
+|
+<PRINT: "Print">
+{
+//System.out.println("Print: "+image);
+}
+|
+<TIPO: "BYTE" | "INT" | "FLOAT" | "DOUBLE" | "BOOL" | "CHAR" | "STRING" >
+{
+// System.out.println("Tipo: "+image);
+}
+|
+<IDENTIFICADOR: <LETRA> (<LETRA>|<DIGITO>)* >
+{
+// System.out.println("Identificador: "+image);
+}
+|
+<LETRA: (["a"-"z"] | ["A"-"Z"]) >
+{
+// System.out.println("Letra: "+image);
+}
+|
+<NUM: <DIGITO>|<DIGITO><PONTO><DIGITO>|<PONTO><DIGITO> >
+
+{
+//System.out.println("Numero: "+image);
+}
+|
+<DIGITO: (["0"-"9"])+ >
+{
+// System.out.println("Digito: "+image);
+}
+|
+<PONTO: "." >
+|
+<ATRIB: ":=" >
+{
+// System.out.println("Atribuicao: "+image);
+}
+|
+<AP: "(" >
+{
+// System.out.println("Parenteses: "+image);
+}
+|
+<FP: ")" >
+{
+// System.out.println("Parenteses: "+image);
+}
+|
+<AC: "{" >
+{
+// System.out.println("Chaves: "+image);
+}
+|
+<FC: "}" >
+{
+// System.out.println("Chaves: "+image);
+}
+|
+<PV: ";" >
+{
+
+//System.out.println("Ponto e Virgula: "+image);
+}
+|
+<A_COLCHETES: "[" >
+{
+// System.out.println("Colchetes: "+image);
+}
+|
+<F_COLCHETES: "]" >
+{
+// System.out.println("Colchetes: "+image);
+}
+|
+<AD: "+" |"-">
+{
+System.out.println("Operador/Sinal: "+image);
+}
+|
+<MUL: "*"|"/" >
+{
+System.out.println("Operador: "+image);
+}
+}
+SKIP:
+{
+" " | "\r\n" | "\t"
+}
+////////////////////////////////////////////////////////INICIO/////////////////////////
+/////
+void Programa():{}
+{
+<INICIO>Variaveis() ( Comandos(true) )*<FIM><EOF>
+{Tabela.imprime();}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+void Variaveis():{Token var=null, Tipo=null;}
+{
+( Tipo= <TIPO> var= <IDENTIFICADOR>
+{ Tabela.insere(var.image,"",Tipo.image); }
+)+
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Comandos(boolean valida):{}
+{
+Condicional()
+|
+Iterativo()
+|
+Atribuicao(valida) //Para autorizar ou negar a realização do da atribuição na
+tabela de identificadores
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Condicional():{Token t=null; boolean valida=true; String result_pesq="";}
+{
+<IF><AP> t= Expressao() <FP><THEN><AC>(
+{
+if ( t.image.equals("true") )
+valida=true;
+else
+valida=false;
+}
+Comandos(valida) )+<FC> ( <ELSE><AC>( Comandos(!valida) )+<FC> )?
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Iterativo():{Token t=null; boolean valida=true;}
+{
+<WHILE><AP>t=Expressao()<FP><DO><AC>( Comandos(valida) )+<FC>
+|
+
+<REPEAT><AC>( Comandos(true) )+<FC><UNTIL><AP>Expressao()<FP>
+|
+<DO><AC> ( Comandos(true) )+<FC><WHILE><AP>Expressao()<FP>
+|
+<FOR><AP>Atribuicao(true)<PV>Expressao()<PV><IDENTIFICADOR>(<INCR
+EMENTADOR>|<DECREMENTADOR>)<FP><AC>(Comandos(true))+<FC>
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Atribuicao(boolean valida) : {double post=0; int value;Token var=null,
+valor=null, bool=null, ident=null, op=null, num=null; String result_pesq="",
+result_pesq_tipo_var="", result_pesq_tipo="";}
+{
+var=<IDENTIFICADOR> <ATRIB> ( valor = <NUM>
+{
+result_pesq = Tabela.pesquisa_valor(var.image);
+result_pesq_tipo_var=Tabela.pesquisa_tipo(var.image);
+if (result_pesq_tipo_var.equals("INT") && valida)
+Tabela.insere(var.image,valor.image,"INT"); // Trata a atribuição adequada
+entre Tipos, POR EXEMPLO, INTEIRO SÓ PODE RECEBER OUTRO INTEIRO
+else
+if (result_pesq_tipo_var.equals("DOUBLE") && valida)
+Tabela.insere(var.image,valor.image,"DOUBLE");
+else
+if (result_pesq_tipo_var.equals("FLOAT") && valida)
+Tabela.insere(var.image,valor.image,"FLOAT");
+else
+if (result_pesq_tipo_var.equals("BYTE") && valida)
+Tabela.insere(var.image,valor.image,"BYTE");
+else
+if (result_pesq_tipo_var.equals("STRING") && valida)
+Tabela.insere(var.image,valor.image,"STRING");
+else
+if (!result_pesq_tipo_var.equals("INT") )
+{
+int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+System.err.println("Semantic error: Attempted assignment between
+different types of variables in line "+currentLine);
+
+System.exit(1);
+}
+}
+|
+ident= <IDENTIFICADOR>
+{
+result_pesq = Tabela.pesquisa_valor(ident.image);
+result_pesq_tipo_var=Tabela.pesquisa_tipo(var.image); //Pega a variavel que
+recebera a outra
+result_pesq_tipo = Tabela.pesquisa_tipo(ident.image); //Pega o tipo da
+variavel a ser atribuida
+if (result_pesq_tipo == result_pesq_tipo_var && valida)
+Tabela.insere(var.image,result_pesq,result_pesq_tipo); // Trata a atribuição
+adequada entre Tipos, POR EXEMPLO, INTEIRO SÓ PODE RECEBER OUTRO
+INTEIRO
+else
+if (result_pesq_tipo != result_pesq_tipo_var)
+{
+int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+System.err.println("Semantic error: Attempted assignment between different
+types of variables in line "+currentLine);
+System.exit(1);
+}
+}
+(op=<AD> num=<NUM>
+{
+if (op.image.equals("+"))
+post=post+Double.parseDouble(result_pesq)+Double.parseDouble(num.imag
+e);
+else
+post=post+Double.parseDouble(result_pesq)-Double.parseDouble(num.image
+);
+if (op != null)
+
+{
+value = (int) post;
+result_pesq= Integer.toString(value);
+}
+if (result_pesq_tipo.equals("INT") && valida )
+Tabela.insere(var.image,result_pesq,result_pesq_tipo); // Trata a atribuição
+adequada entre Tipos, POR EXEMPLO, INTEIRO SÓ PODE RECEBER OUTRO
+INTEIRO
+else
+if (!result_pesq_tipo.equals("INT") )
+{
+int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+System.err.println("Semantic error: Attempted assignment between different
+types of variables in line "+currentLine);
+System.exit(1);
+}
+}
+)*
+|
+bool= <SENTENCA_BOOLEANA>
+{
+result_pesq_tipo_var=Tabela.pesquisa_tipo(var.image); //pega o tipo da
+variavel que ira receber o valor BOOLEANO
+if (result_pesq_tipo_var.equals("BOOL") && valida )
+Tabela.insere(var.image,bool.image,"BOOL"); // Trata a atribuição
+adequada entre Tipos INTEIROS
+else
+if (!result_pesq_tipo_var.equals("BOOL") )
+{
+int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+System.err.println("Semantic error: Attempted assignment between different
+types of variables in line "+currentLine);
+System.exit(1);
+}
+}
+)
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+Token Expressao():{ Token n=null; boolean a=false, b=false; Token tk=null;
+Token d=null;}
+{
+tk= termoA() ( n= <BOOL_A> d= termoA()
+{ // Termos semânticos em Java
+if ( tk.image.equals("true") )
+a=true;
+else
+a=false;
+if ( d.image.equals("true") )
+b=true;
+else
+b=false;
+a = a || b;
+if (a) // Garantindo o retorno adequado para o Token tk
+tk.image="true";
+else
+tk.image = "false";
+}
+)*
+{return tk;}
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+Token termoA():{Token tk=null, m=null, r=null, d=null; boolean a=false,
+b=false; double num_a=0.00, num_b=0.00;}
+{
+tk= termoB() ( m = <BOOL_B> d=termoB()
+{
+if ( tk.image.equals("true") )
+a=true;
+else
+a=false;
+
+if ( d.image.equals("true") )
+b=true;
+else
+b=false;
+a = a && b;
+if (a)
+tk.image="true";
+else
+tk.image = "false";
+}
+)*
+{return tk;}
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+Token termoB():{Token tk=null, m=null, r=null, d=null; boolean a=false,
+b=false; double num_a=0.00, num_b=0.00;}
+{
+tk= fator() ( r= <RELACIONAIS> d= fator()
+{
+num_a= (Double.parseDouble(tk.image));
+num_b= (Double.parseDouble(d.image));
+if ( r.image.equals(">") )
+a= num_a>num_b;
+else if ( r.image.equals("<") )
+a= num_a<num_b;
+else
+a= num_a==num_b;
+if (a)
+tk.image="true";
+else
+tk.image = "false";
+}
+
+)*
+{return tk;}
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+Token fator():{ Token num= null, var=null, bool=null, pesq=null; String valor; }
+{
+num=<NUM> {return num;}
+|
+var= <IDENTIFICADOR>
+{
+valor = Tabela.pesquisa_valor(var.image); // Necessita-se gerenciar as
+variaveis previamente definidas
+if ( valor!="" )
+var.image=valor;
+return var;
+}
+|
+bool= <SENTENCA_BOOLEANA> {return bool;}
+}

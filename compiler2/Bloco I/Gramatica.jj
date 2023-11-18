@@ -1,0 +1,122 @@
+options {
+  DEBUG_PARSER = false;
+  DEBUG_TOKEN_MANAGER = false;
+}
+
+PARSER_BEGIN(Gramatica)
+import java.io.*;
+
+public class Gramatica {
+   static Tabela tabela = new Tabela();
+   public static void main(String args[])  throws ParseException  {
+       Gramatica analisador = null;
+      try {
+         analisador = new Gramatica(new FileInputStream("Entrada.txt"));
+         Gramatica.inicio();
+          System.out.println(tabela.toString()); 
+         System.out.println("Analise lexica, sintatica e semantica sem erros!");
+      }
+
+      catch(FileNotFoundException e) {
+         System.out.println("Erro: arquivo não encontrado");
+      }
+
+      catch(TokenMgrError e) {
+         System.out.println("Erro léxico\n" + e.getMessage());
+      }
+
+      catch(ParseException e) {
+         System.out.println("Erro sintático\n" + e.getMessage());
+      }
+   }
+}
+
+PARSER_END(Gramatica)
+SKIP : { " " | "\t" | "\r" | "\n" }
+TOKEN [IGNORE_CASE] : {
+      <EXIBE: "exibe" >
+}
+
+TOKEN : {
+      < IDENT:   (["a"-"z"])+ > |
+      < ATRIB:   ":=" >             |
+      < ADICAO:  "+" >              |
+      < PT_VIRG: ";" >              |
+      < UM:          "I" >              |
+      < DOIS:        "II" >         |
+      < TRES:        "III" >            |
+      < QUATRO:  "IV" >             |
+      < CINCO:   "V" >              |
+      < SEIS:        "VI" >             |
+      < SETE:        "VII" >            |
+      < OITO:        "VIII" >           |
+      < NOVE:        "IX" >             |
+      < DEZ:         "X" >              |
+      < VINTE:   "XX" >             |
+      < TRINTA:  "XXX" >     
+}
+
+void inicio() : {}
+{
+   ( linhaComando() )* <EOF>
+
+}
+
+void linhaComando() : {}
+{
+      comando() <PT_VIRG>
+}
+
+void comando() : {}
+{
+      exibe() | atribui()
+}
+
+void exibe() : {}
+{
+      <EXIBE> <IDENT>
+}
+
+void atribui() : {Simbolo simb; Token t;}
+{
+      t=<IDENT>
+      {
+            simb = new Simbolo(t.image);
+            tabela.inclui(simb);
+      }
+      <ATRIB> expressao()
+}
+
+void expressao() : {Token tk=null;}
+{
+      fator() ( <ADICAO> fator() )*
+}
+
+void fator() : {}
+{
+      t = <IDENT>
+      {
+            if(!tabela.isExiste(t.image))
+                  System.out.println("Erro semântico \n A variável "+t.image+
+                                     "não foi inicializada");
+      }
+      |
+      numero()
+}
+
+void numero() : {}
+{
+    dezena() ( unidade() )?
+    |
+    unidade()
+}
+
+void unidade() : {}
+{
+      <UM> | <DOIS> | <TRES> | <QUATRO> | <CINCO> | <SEIS> | <SETE> | <OITO> | <NOVE>
+}
+
+void dezena() : {}
+{
+      <DEZ> | <VINTE> | <TRINTA>
+}

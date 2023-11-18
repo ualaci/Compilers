@@ -1,0 +1,181 @@
+options
+{
+  static = false;
+}
+PARSER_BEGIN(Gramatica)
+import java.io.*;
+
+class Gramatica
+{    
+  Tabelas Tabela = new Tabelas (); // Para o gerenciamento de variáveis
+  public static void main (String[] args) throws ParseException
+  {  
+   try
+   {      
+    Gramatica analisador = new Gramatica (System.in);
+    analisador.Programa();
+    System.out.println("Compilado....");
+  }   
+  catch(TokenMgrError e) {
+  System.err.println("Lexical Error:\n" + e.getMessage()); 
+ }
+  catch(ParseException e) {
+  System.err.println("Syntactic Error:\n" + e.getMessage());
+  }
+  catch(Exception e) {
+  System.err.println("Semantic error:\n" + e.getMessage()  );  
+  e.printStackTrace();
+  }
+ }  
+}
+
+PARSER_END(Gramatica)
+TOKEN: /* Elementos gerais como tipos de variáveis, identificadores, números e entre outros.  */
+{
+  <INICIO: "$BEGIN_PROGRAM">
+  {
+    System.out.println("Diretiva " +image);
+  }
+  |
+  <FIM: "$END_PROGRAM">
+  {
+    System.out.println("Diretiva " +image);
+  }
+  |
+  <TIPO: "INT" | "FLOAT" | "BYTE" | "LONG" | "DOUBLE" | "BOOL" | "CHAR" | "STRING" >
+  {
+    System.out.println("Tipo " +image);
+  }
+  |
+  <BOOLEANO: "TRUE" | "FALSE" >
+  {
+    System.out.println("Booleano " +image);
+  }
+  |
+<IDENTIFICADOR: <LETRA> (<LETRA>|<DIGITO>)* >
+ {
+ // System.out.println("Identificador: "+image);
+  }
+| 
+<LETRA: (["a"-"z"] |  ["A"-"Z"]) >
+ {
+//  System.out.pri  ntln("Letra: "+image);
+  }
+|
+<NUM: <DIGITO><PONTO><DIGITO>|<PONTO><DIGITO>|<DIGITO><PONTO> >
+ {
+ //System.out.println("Numero: "+image);
+ }
+|
+<DIGITO: (["0"-"9"])+ >
+ {
+ // System.out.println("Digito: "+image);
+  }
+|
+<PONTO: "." >
+|
+<ATRIB: "="  >
+|
+<ASPAS: "\"" >
+
+
+
+
+}
+
+SKIP:
+{
+" " | "\r\n" | "\t"
+
+}
+
+////////////////////////////////////////////////////////INICIO//////////////////////////////
+void Programa():{}
+{
+  <INICIO> Variaveis() ( Comandos() )* <FIM> <EOF>
+{Tabela.imprime();}
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Variaveis():{Token var=null, tipo=null;}
+{
+(tipo = <TIPO> var = <IDENTIFICADOR>
+{ Tabela.insere (var.image,"",tipo.image) ; }
+
+)+
+
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Comandos():{}
+{
+Atribuicao()
+/*
+|
+Condicional()
+|
+Iterativo()
+*/
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+void Atribuicao():{Token var=null, valor=null, flutuante=null, bool = null, ident=null; String result = null, result2 = null;}
+{
+  var = <IDENTIFICADOR> <ATRIB> (valor = <DIGITO> 
+  {
+    result = Tabela.pesquisa_tipo(var.image);
+    if (result.equals("INT")){
+      Tabela.insere (var.image,valor.image,"INT");
+    }
+    else {
+      int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+      System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh inteiro");
+    }
+  }
+  | flutuante = <NUM> 
+  {
+    result = Tabela.pesquisa_tipo(var.image);
+    if (result.equals("FLOAT")){
+      Tabela.insere (var.image,flutuante.image,"FLOAT");
+    }
+    else {
+      int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+      System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh float");
+    }
+  }
+
+  |bool = <BOOLEANO> 
+  {
+    result = Tabela.pesquisa_tipo(var.image);
+    if (result.equals("BOOL")){
+      Tabela.insere (var.image,bool.image,"BOOL");
+    }
+    else {
+      int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+      System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh booleano");
+    }
+  }
+
+  | <ASPAS> ident = <IDENTIFICADOR> <ASPAS>{
+    result = Tabela.pesquisa_tipo(var.image);
+    if(result.equals("STRING")){
+      Tabela.insere(var.image,ident.image,"STRING");
+    }
+    else{
+      int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+      System.err.println("Semantic error: " + currentLine + ": " + var.image + " nao eh string");
+    }
+  }
+
+  | ident = <IDENTIFICADOR>{
+    result = Tabela.pesquisa_tipo(ident.image);
+    result2 = Tabela.pesquisa_tipo(var.image);
+    if(result.equals(result2)){
+      Tabela.insere (var.image, Tabela.pesquisa_valor(ident.image), result);
+    }
+    else{
+      int currentLine = new Throwable().getStackTrace()[0].getLineNumber();
+      System.err.println("Semantic error: " + currentLine + ": " + var.image + " eh do tipo " + result2 + " e nao eh do tipo " + result);
+    }
+
+  }
+  )
+
+}

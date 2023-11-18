@@ -1,0 +1,267 @@
+
+/*  CompiladorExemplo.jj  -  Analisador Semântico */
+options {
+  DEBUG_PARSER = false;
+  DEBUG_TOKEN_MANAGER = false;
+}
+
+PARSER_BEGIN(CompiladorExemploIntermediarioTotal)
+import java.io.*;
+import java.util.LinkedList;
+
+public class CompiladorExemploIntermediarioTotal {
+   static Tabela tabela = new Tabela();
+   static LinkedList <Comando>  listaComandos;
+   public static void main(String args[])  throws ParseException  {
+        try
+   {      
+    CompiladorExemploIntermediarioTotal analisador = new CompiladorExemploIntermediarioTotal (System.in);
+    listaComandos = analisador.inicio(); 
+    System.out.println(listaComandos);
+    GeradorCodigoDestino.geraCodigoAssembler(listaComandos);
+    
+    System.out.println("Compilado....");
+  }   
+  catch(TokenMgrError e) {
+  System.err.println("Lexical Error:\n" + e.getMessage()); 
+ }
+  catch(ParseException e) {
+  System.err.println("Syntactic Error:\n" + e.getMessage());
+  }
+  catch(Exception e) {
+  System.err.println("Semantic error:\n" + e.getMessage()  );  
+  e.printStackTrace();
+  }
+ }  
+}
+PARSER_END(CompiladorExemploIntermediarioTotal)
+SKIP : { " " | "\t" | "\r" | "\n" }
+
+TOKEN [IGNORE_CASE] : {
+     <EXIBE: "exibe" >
+}
+TOKEN : {      
+      < ATRIB:   ":=" >                                        
+      |
+      < IGUAL:   "=" >                                         
+      |
+      < RELAC:    "==" | ">=" | "<=" | "<" | ">" | "!=" > 
+      |
+      < INCREMENTO:    "++"|"--" >                             
+      |
+      <IF: "if"   >                                            
+      |
+      <THEN: "then" >                                          
+      |
+      <ELSE: "else"   >                                        
+      |
+      <AP: "("   >                                             
+      |
+      <FP: ")"   >                                             
+      |
+      <AC: "{"   >                                             
+      |
+      <FC: "}"   >                                             
+      |
+      < ADICAO:  "+" >                                         
+      |
+      < PTVIRG: ";" >                                         
+      |
+      < UM:          "I" >                                     
+      |
+      < DOIS:        "II" >                                    
+      |
+      < TRES:        "III" >                                   
+      |
+      < QUATRO:  "IV" >                                        
+      |
+      < CINCO:   "V" >                                         
+      |
+      < SEIS:        "VI" >                                    
+      |
+      < SETE:        "VII" >                                   
+      |
+      < OITO:        "VIII" >                                  
+      |
+      < NOVE:        "IX" >                                    
+      |
+      < DEZ:         "X" >                                     
+      |
+      < VINTE:   "XX" >                                        
+      |
+      < TRINTA:  "XXX" > 
+      |
+      < IDENT:   (["a"-"z"])+ >     
+}
+
+LinkedList<Comando> inicio() : {Comando com = null; LinkedList<Comando> listaComandos = new LinkedList();}
+{
+   ( com = linhaComando()
+      {
+           listaComandos.add(com);
+      }
+   )* <EOF>
+
+   {return listaComandos;}
+}
+
+Comando linhaComando() : {Comando com;}
+{
+      com = comando() <PTVIRG>
+      {
+            return com;
+      }
+}
+
+Comando comando() : {Comando com=null;}
+{    
+      (       
+          com = exibe()
+       |
+       LOOKAHEAD(2)
+       com =  atribui()   
+       |        
+       com = condicional()
+      )
+      {return com;}
+}
+
+Comando exibe() : {Comando com; Token t;}
+{
+      <EXIBE> t = <IDENT>
+      {
+            com = new Comando('E',t.image,"");
+            return com;
+      }
+}
+
+Comando atribui() : {Simbolo simb; Token t; LinkedList<Item> listaExp; Comando com;}
+{
+      t=<IDENT>
+      {
+            simb = new Simbolo(t.image);
+            tabela.inclui(simb);
+      }
+      <ATRIB> listaExp = expressao()
+      {
+            com = new Comando('A',t.image,listaExp);
+            return com;
+      }
+}
+
+Comando condicional() : {Comando com=null; Token t, i_if, i_else, _aditivo, aditivo;  LinkedList<Item> listaExp = new LinkedList<Item>(); Item item=null, num_a=null, num_b=null;}
+{     
+    <IF><AP> num_a = termo() t = <RELAC>  num_b = termo()  <FP><THEN> 
+     <AC> 
+         i_if = <IDENT> aditivo = <INCREMENTO><PTVIRG>
+     <FC>
+    <ELSE>
+      <AC>
+          i_else = <IDENT> _aditivo = <INCREMENTO><PTVIRG>
+      <FC>      
+        {
+      listaExp.add(new Item('v',num_a.getvalor())  );
+      listaExp.add(new Item('v',num_b.getvalor())  );
+      listaExp.add(new Item('c', t.image)  );
+      
+     listaExp.add(new Item('v', i_else.image )  );
+     listaExp.add(new Item('i', _aditivo.image )  );
+
+     listaExp.add(new Item('v', i_if.image )  );
+     listaExp.add(new Item('r',aditivo.image )  );
+     
+     com = new Comando ('I', i_if.image, listaExp );
+     }
+    {  return com; }
+}
+
+Item termo(): {Token t=null; Item item=null;}
+{      
+       (t=<IDENT>
+      {
+         if(!tabela.isExiste(t.image))
+          System.out.println("Semantic Error \n Variable "+t.image+
+                             " not initialized");
+         item = new Item('v',t.image);
+         return item;
+      }
+      )*
+}
+
+LinkedList<Item> expressao() : {LinkedList<Item> listaExp = new LinkedList<Item>(); Item item = null;}
+{
+      item = fator()
+      {
+            listaExp.add(item);
+      }
+      (
+         <ADICAO> item = fator()
+         {
+              listaExp.add(item);
+              listaExp.add(new Item('o',"+"));
+         }
+        )*
+      {return listaExp;}
+}
+
+Item fator() : {Token t;Item item = null; int valorNumero;}
+{
+      t = <IDENT>
+      {
+         if(!tabela.isExiste(t.image))
+          System.out.println("Semantic Error \n Variable "+t.image+
+                             " Not initialized");
+         item = new Item('v',t.image);
+         return item;
+      }
+  |
+      valorNumero = numero()
+      {
+         item = new Item('n',""+valorNumero);
+         return item;
+      }
+}
+
+int numero() : {int valorUnidade=0, valorDezena=0;}
+{
+    (  
+    valorDezena = dezena()  
+
+     ( valorUnidade = unidade() )?
+     
+    |
+      valorUnidade = unidade()
+
+    )
+   {return valorDezena + valorUnidade;}
+}
+int unidade() : {}
+{
+      <UM> {return 1;}
+      |
+      <DOIS> {return 2;} 
+      | 
+      <TRES> {return 3;} 
+      | 
+      <QUATRO> {return 4;} 
+      | 
+      <CINCO> {return 5;} 
+      | 
+      <SEIS> {return 6;} 
+      | 
+      <SETE> {return 7;} 
+      | 
+      <OITO> {return 8;} 
+      | 
+      <NOVE> {return 9;}
+}
+
+
+int dezena() : {}
+{
+      <DEZ> {return 10;}
+      | 
+      <VINTE> {return 20;}
+      | 
+      <TRINTA>{return 30;}
+}

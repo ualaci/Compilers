@@ -1,0 +1,36 @@
+$BEGIN_PROGRAM
+BOOL Valor1
+BOOL Valor2
+INT X
+INT Y
+INT Z
+INT i
+FLOAT W
+STRING Nome
+
+X=-5
+Y=10
+Z=-15
+Valor1=false
+i=0
+
+Z:= X>Y ? Y : X
+
+while (i<10) do { 
+//quaisquer comandos - retirar essa linha para testar
+}
+
+repeat { 
+//quaisquer comandos - retirar essa linha para testar
+}until (i<10) 
+
+do { 
+//quaisquer comandos - retirar essa linha para testar
+
+}while(i<10) 
+
+for (i=1;i<10;i++){
+//quaisquer comandos - retirar essa linha para testar
+}
+
+$END_PROGRAM

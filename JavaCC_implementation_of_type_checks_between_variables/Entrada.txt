@@ -1,0 +1,20 @@
+$BEGIN_PROGRAM
+
+FLOAT X
+INT  Y
+BOOL Flag
+FLOAT Numero
+INT Z
+STRING Transporte
+
+
+Y=21
+X=34.
+Transporte="Aviao"
+Numero=43.22
+Flag=FALSE
+X=78.0
+Z=Transporte
+Y=X
+
+$END_PROGRAM

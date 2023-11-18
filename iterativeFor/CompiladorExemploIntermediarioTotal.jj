@@ -1,0 +1,305 @@
+/*
+A linguagem fonte é simples, sendo formada por somente dois comandos:
+1. Comando de atribuição onde variáveis recebem expressões contendo valores representados por números romanos de 1 a 39;
+2. Comando de exibição de variável.
+Detalhes:
+i. os números são sempre escritos em romanos e em letras maiúsculas.
+ii. as variáveis, que não precisam de ser declaradas, são formadas por letra(s) minúscula(s).
+iii. o caractere de finalização de comando é o ponto-e-vírgula.
+iv.  comentários não são aceitos.
+v.  o comando de exibição só aceita uma variável e apresenta o valor em arábicos.
+vi. possui o comando condicional IF
+vii. possui o comando iterativo WHILE
+viii. possui o comando iterativo FOR
+*/
+
+
+/*  CompiladorExemplo.jj  -  Analisador Semântico */
+options {
+  DEBUG_PARSER = false;
+  DEBUG_TOKEN_MANAGER = false;
+}
+
+PARSER_BEGIN(CompiladorExemploIntermediarioTotal)
+import java.io.*;
+import java.util.LinkedList;
+
+public class CompiladorExemploIntermediarioTotal {
+   static Tabela tabela = new Tabela();
+   static LinkedList <Comando>  listaComandos;
+   public static void main(String args[])  throws ParseException  {
+       // CompiladorExemplo analisador = null;
+        try
+   {      
+    CompiladorExemploIntermediarioTotal analisador = new CompiladorExemploIntermediarioTotal (System.in);
+    listaComandos = analisador.inicio(); 
+    System.out.println(listaComandos);
+    GeradorCodigoDestino.geraCodigoAssembler(listaComandos); 
+    
+  }   
+  catch(TokenMgrError e) {
+  System.err.println("Lexical Error:\n" + e.getMessage()); 
+ }
+  catch(ParseException e) {
+  System.err.println("Syntactic Error:\n" + e.getMessage());
+  }
+  catch(Exception e) {
+  System.err.println("Semantic error:\n" + e.getMessage()  );  
+  e.printStackTrace();
+  }
+ }  
+}
+PARSER_END(CompiladorExemploIntermediarioTotal)
+SKIP : { " " | "\t" | "\r" | "\n" }
+
+TOKEN [IGNORE_CASE] : {
+     <EXIBE: "exibe" >
+}
+TOKEN : {      
+      < ATRIB:   ":=" >             |
+      < IGUAL:   "=" >             |
+      < RELACIONAL:    "=="| "<"  | ">" | "<="| ">="  | "!=" > |
+      < INCREMENTO:    "++"|"--" > |
+      <IF: "if"   > |
+      <THEN: "then" > |
+      <ELSE: "else"   > |
+      <WHILE: "while"   > |
+      <FOR: "for"   > |
+      <DO: "do"   > |
+      <TO: "to"   > |
+      <AP: "("   > |
+      <FP: ")"   > |
+      <AC: "{"   > |
+      <FC: "}"   > |
+      < ADICAO:  "+" >              |
+      < PT_VIRG: ";" >              |
+      < ZERO:          "O" >              |
+      < UM:          "I" >              |
+      < DOIS:        "II" >             |
+      < TRES:        "III" >            |
+      < QUATRO:  "IV" >             |
+      < CINCO:   "V" >              |
+      < SEIS:        "VI" >             |
+      < SETE:        "VII" >            |
+      < OITO:        "VIII" >           |
+      < NOVE:        "IX" >             |
+      < DEZ:         "X" >              |
+      < VINTE:   "XX" >             |
+      < TRINTA:  "XXX" > |
+      < IDENT:   (["a"-"z"])+ >     
+}
+
+LinkedList<Comando> inicio() : {Comando com = null; LinkedList<Comando> listaComandos = new LinkedList();}
+{
+   ( com = linhaComando()
+      {
+           listaComandos.add(com);
+      }
+   )* <EOF>
+   {
+      return listaComandos;
+   }
+}
+
+Comando linhaComando() : {Comando com;}
+{
+      com = comando() <PT_VIRG>
+      {
+            return com;
+      }
+}
+
+Comando comando() : {Comando com=null;}
+{    
+      (            
+       LOOKAHEAD(3)
+       com = exibe()
+       |
+       com =  atribui()   
+       |        
+       com = condicional()
+       |        
+       com = iterativo()
+      )
+      {
+            return com;
+      }
+}
+
+Comando exibe() : {Comando com; Token t;}
+{
+      <EXIBE> t = <IDENT>
+      {
+            com = new Comando('E',t.image,"");
+            return com;
+      }
+}
+
+Comando atribui() : {Simbolo simb; Token t; LinkedList<Item> listaExp; Comando com;}
+{
+      t=<IDENT>
+      {
+            simb = new Simbolo(t.image);
+            tabela.inclui(simb);
+      }
+      <ATRIB> listaExp = expressao()
+      {
+            //System.out.println(listaExp);
+            com = new Comando('A',t.image,listaExp);
+            return com;
+      }
+}
+
+Comando condicional() : {Comando com=null; Token t, i_if, i_else, aditivo, _aditivo;  LinkedList<Item> listaExp = new LinkedList<Item>(); Item item=null, num_a=null, num_b=null;}
+{     
+     <IF><AP> num_a= termo()  t = <RELACIONAL>  num_b = termo()  <FP><THEN> 
+     <AC> 
+         i_if = <IDENT> aditivo = <INCREMENTO><PT_VIRG> /*  ++ ou --  */
+     <FC>
+    <ELSE>
+      <AC>
+          i_else = <IDENT> _aditivo = <INCREMENTO><PT_VIRG>/*  ++ ou --  */
+      <FC>      
+      {
+
+      listaExp.add(new Item('v',num_a.getvalor())  ); //p
+      listaExp.add(new Item('v',num_b.getvalor())  );//q
+      listaExp.add(new Item('c', t.image)  ); //==/>/< - Passa a primeira parada para resolver o que está na pilha
+
+     /* Coloca-se a a atribuição do else primeiro para facilitar a verificação dos elementos na pilha   */
+     listaExp.add(new Item('v', i_else.image )  );  // b - atribuicao do else
+     listaExp.add(new Item('i', _aditivo.image )  ); // --  - Novo momento para resolver o incremento/decremento do else
+
+     /* Coloca-se a a atribuição do if  em segundo para facilitar na verificação da pilha  */
+     listaExp.add(new Item('v', i_if.image )  ); // q -  atribuicao do if
+     listaExp.add(new Item('r', aditivo.image )  ); // --  - Novo momento para resolver o incremento/decremento do if
+     
+     com = new Comando ('I', i_if.image, listaExp ); // Passa a lista inteira com todos os itens adicionados no comando IF
+     }
+            
+    {  return com; }
+}
+
+Comando iterativo() : {Comando com=null; Token t, i_while, aditivo, i, num, var;  LinkedList<Item> listaExp = new LinkedList<Item>(); Item item=null, num_a=null, num_b=null;}
+{     //while ( p < q ) do {  p++; };
+     <WHILE><AP>  num_a= termo()  t = <RELACIONAL> num_b = termo()  <FP> <DO>
+     <AC> 
+         i_while = <IDENT>  aditivo = <INCREMENTO><PT_VIRG> /*  ++ ou --  */
+     <FC> 
+     {
+     // while (p < q)
+      listaExp.add(new Item ('v', num_a.getvalor()) ); //
+      listaExp.add(new Item ('v', num_b.getvalor()) ); //
+      listaExp.add(new Item ('w', t.image) ); //< - Passa a primeira parada para resolver o que está na pilha
+      //p++
+      /*Coloca-se a atribuição para verificação da pilha   */
+     listaExp.add(new Item ('v', i_while.image  ) ); //p
+     listaExp.add(new Item ('h', aditivo.image  ) ); //++/-- Novo momento para resolver o que está na pilha     
+     com = new Comando ('W', i_while.image, listaExp);  
+     }      
+    |
+    //for (i to num;++) { exibe i;  };
+   <FOR><AP> i = <IDENT><TO> num= <IDENT><PT_VIRG> aditivo= <INCREMENTO><FP>
+      <AC>
+         <EXIBE> var= <IDENT><PT_VIRG>
+      <FC>
+    {
+     listaExp.add(new Item ('v', i.image) ); //i
+     listaExp.add(new Item ('v', num.image) ); //num
+     listaExp.add(new Item ('f', aditivo.image) ); //Marcador para realizar a primeira parada, resolvendo o que está na pilha
+     //Exibe
+     listaExp.add(new Item ('e', var.image) ); //imprime
+
+     com = new Comando ('F', i.image, listaExp ); // F - de FOR
+    }       
+     
+    {  return com; }
+}
+
+
+Item termo(): {Token t=null; Item item=null;}
+{      
+       (t=<IDENT>
+      {
+         if(!tabela.isExiste(t.image))
+          System.out.println("Erro semântico \n A variável "+t.image+
+                             " não foi inicializada");
+         item = new Item('v',t.image);
+         return item;
+      }
+      )*
+}
+
+LinkedList<Item> expressao() : {LinkedList<Item> listaExp = new LinkedList<Item>(); Item item = null;}
+{
+      item = fator()
+      {
+            listaExp.add(item);
+      }
+      (
+         <ADICAO> item = fator()
+         {
+              listaExp.add(item);
+              listaExp.add(new Item('o',"+"));
+         }
+        )*
+      {
+            return listaExp;
+      }
+}
+
+Item fator() : {Token t;Item item = null; int valorNumero;}
+{
+      t = <IDENT>
+      {
+         if(!tabela.isExiste(t.image))
+          System.out.println("Erro semântico \n A variável "+t.image+
+                             " não foi inicializada");
+         item = new Item('v',t.image);
+         return item;
+      }
+  |
+      valorNumero = numero()
+      {
+         item = new Item('n',""+valorNumero);
+         return item;
+      }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
+int numero() : {int valorUnidade=0, valorDezena=0;}
+{
+    (  
+    valorDezena = dezena()  
+
+     ( valorUnidade = unidade() )?
+     
+    |
+      valorUnidade = unidade()
+
+    )
+   {
+   return valorDezena + valorUnidade;
+   }
+}
+//////////////////////////////////////////////////////////////////////////////////////
+int unidade() : {}
+{
+      <ZERO> {return 0;}|
+      <UM> {return 1;}|
+      <DOIS> {return 2;} | 
+       <TRES> {return 3;} | 
+       <QUATRO> {return 4;} | 
+       <CINCO> {return 5;} | 
+        <SEIS> {return 6;} | 
+        <SETE> {return 7;} | 
+        <OITO> {return 8;} | 
+        <NOVE> {return 9;}
+}
+//////////////////////////////////////////////////////////////////////////////////////
+int dezena() : {}
+{
+      <DEZ> {return 10;}| 
+      <VINTE> {return 20;}| 
+      <TRINTA>{return 30;}
+}
